@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Blockchain DNS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Blockchain Domain Name System</h1>
+        <div id="status"></div>
+        
+        <div class="card">
+            <h2>Register a Domain</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="domain">Domain Name:</label>
+                    <input type="text" id="domain" name="domain" placeholder="example.eth" required>
+                </div>
+                <div class="form-group">
+                    <label for="ip">IP Address:</label>
+                    <input type="text" id="ip" name="ip" placeholder="192.168.1.1" required>
+                </div>
+                <button type="submit" class="btn">Register Domain</button>
+            </form>
+            <div id="registerResult" class="result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Query a Domain</h2>
+            <form id="queryForm">
+                <div class="form-group">
+                    <label for="queryDomain">Domain Name:</label>
+                    <input type="text" id="queryDomain" name="domain" placeholder="example.eth" required>
+                </div>
+                <button type="submit" class="btn">Query IP</button>
+            </form>
+            <div id="queryResult" class="result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Mine Pending Registrations</h2>
+            <button id="mineBtn" class="btn">Mine Block</button>
+            <div id="mineResult" class="result"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Blockchain Status</h2>
+            <button id="viewChainBtn" class="btn">View Status</button>
+            <div id="chainInfo" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Display server connection status
+        const statusEl = document.getElementById('status');
+        statusEl.innerHTML = '<div class="info">Checking server connection...</div>';
+        
+        // Test server connection
+        fetch('/chain')
+            .then(response => {
+                if (response.ok) {
+                    statusEl.innerHTML = '<div class="success">Connected to server</div>';
+                } else {
+                    statusEl.innerHTML = '<div class="error">Server error: ' + response.status + '</div>';
+                }
+            })
+            .catch(error => {
+                statusEl.innerHTML = '<div class="error">Cannot connect to server. Make sure Flask is running.</div>';
+                console.error('Connection error:', error);
+            });
+        
+        // Register Domain
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('domain', document.getElementById('domain').value);
+            formData.append('ip', document.getElementById('ip').value);
+            
+            fetch('/register', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('registerResult').innerHTML = `<div class="success">${data.message}</div>`;
+                } else {
+                    document.getElementById('registerResult').innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('registerResult').innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            });
+        });
+        
+        // Query Domain
+        document.getElementById('queryForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('domain', document.getElementById('queryDomain').value);
+            
+            fetch('/query', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('queryResult').innerHTML = `<div class="success">IP Address: ${data.ip}</div>`;
+                } else {
+                    document.getElementById('queryResult').innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('queryResult').innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            });
+        });
+        
+        // Mine Block
+        document.getElementById('mineBtn').addEventListener('click', function() {
+            fetch('/mine')
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('mineResult').innerHTML = `<div class="success">${data.message}</div>`;
+                } else {
+                    document.getElementById('mineResult').innerHTML = `<div class="error">${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('mineResult').innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            });
+        });
+        
+        // View Blockchain
+        document.getElementById('viewChainBtn').addEventListener('click', function() {
+            fetch('/chain')
+            .then(response => response.json())
+            .then(data => {
+                let html = '<div>';
+                
+                html += `<p>Registered domains: ${Object.keys(data.current_records).length}</p>`;
+                html += `<p>Pending domains: ${data.pending}</p>`;
+                
+                if(Object.keys(data.current_records).length > 0) {
+                    html += '<h3>Current Domain Records:</h3><ul>';
+                    for(const domain in data.current_records) {
+                        html += `<li><strong>${domain}</strong>: ${data.current_records[domain]}</li>`;
+                    }
+                    html += '</ul>';
+                } else {
+                    html += '<p>No domains registered yet.</p>';
+                }
+                
+                html += '</div>';
+                
+                document.getElementById('chainInfo').innerHTML = html;
+            })
+            .catch(error => {
+                document.getElementById('chainInfo').innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            });
+        });
+    </script>
+</body>
+</html>
